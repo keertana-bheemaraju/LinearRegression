@@ -1,6 +1,5 @@
 package machine_learning_models.linear_regression;
 
-import machine_learning_models.linear_regression.pojo.DataSet;
 import machine_learning_models.linear_regression.pojo.TestingDataSet;
 import machine_learning_models.linear_regression.pojo.TrainingDataSet;
 import org.ejml.simple.SimpleMatrix;
@@ -17,10 +16,8 @@ public class LinearRegressionModel {
     private TrainingDataSet trainingDataSet;
     private TestingDataSet testingDataSet;
     private List<Double> w_vector = new ArrayList<>();
-    private double L2_training;
-    private double L2_tuned;
 
-    private final double LAMBDA = -1000000000;
+    private final double LAMBDA = -80.0;
     private double costFunction;
 
     public LinearRegressionModel(String trainingData, String testingData) {
@@ -28,12 +25,10 @@ public class LinearRegressionModel {
         this.testingData = testingData;
     }
 
-    public void determineCostFunction() {
 
-        costFunction = L2_training + (LAMBDA * 5);
-        System.out.println("Cost function is " + costFunction);
-    }
-
+    /**
+     * The idea of this tuning module is to add the cost function to each calculated y value, in a hope to bring it closer to the expected value
+     */
     public void tuneModel() {
 
         List<Double> calculatedOutput = trainingDataSet.getCalculatedOutput();
@@ -47,7 +42,7 @@ public class LinearRegressionModel {
     }
 
 
-    public double calculateL2(TrainingDataSet dataSet, boolean tuned) throws Exception {
+    public double calculateL2ForTraining(TrainingDataSet dataSet, boolean tuned) throws Exception {
 
         List<Double> actualOutput = dataSet.getActualOutput();
         List<Double> output;
@@ -64,7 +59,7 @@ public class LinearRegressionModel {
 
         double L2 = 0;
         for (int i = 0; i < actualOutput.size(); i++) {
-            double delta = output.get(i) - actualOutput.get(i);
+            double delta = Math.abs(output.get(i) - actualOutput.get(i));
             L2 += (delta * delta);
         }
 
@@ -72,7 +67,28 @@ public class LinearRegressionModel {
 
     }
 
-    public void buildModel() {
+    public double calculateL2ForValidation(TestingDataSet dataSet) throws Exception {
+
+        List<Double> actualOutput = dataSet.getActualOutput();
+        List<Double> output;
+
+        output = dataSet.getCalculatedOutput();
+
+        if (actualOutput.size() != output.size()) {
+            throw new Exception("actual and calculated outputs don't match");
+        }
+
+        double L2 = 0;
+        for (int i = 0; i < actualOutput.size(); i++) {
+            double delta = Math.abs(output.get(i) - actualOutput.get(i));
+            L2 += (delta * delta);
+        }
+
+        return L2;
+
+    }
+
+    public void trainModel() {
 
         // y = w0 + w1x1 + w2x2 + ...
         List<List<Double>> lists_x = trainingDataSet.getInput();
@@ -92,6 +108,28 @@ public class LinearRegressionModel {
         }
 
         trainingDataSet.setCalculatedOutput(list_y_calculated);
+    }
+
+    public void validate() {
+
+        // y = w0 + w1x1 + w2x2 + ...
+        List<List<Double>> lists_x = testingDataSet.getInput();
+        List<Double> list_y_calculated = new ArrayList<>();
+
+        // construct w0 + w1x1 + w2x2 + ...
+        double w0 = w_vector.get(0);
+        for (List<Double> list_x : lists_x) {
+            double y_calc = 0;
+            // Start from x1, as x0 is always 1
+            for (int j = 1; j < list_x.size(); j++) {
+                y_calc += w_vector.get(j) * list_x.get(j);
+            }
+            y_calc += w0;
+
+            list_y_calculated.add(y_calc);
+        }
+
+        testingDataSet.setCalculatedOutput(list_y_calculated);
     }
 
 
@@ -175,15 +213,6 @@ public class LinearRegressionModel {
 
     }
 
-
-    public void train() {
-
-    }
-
-    public void validate() {
-
-    }
-
     public void process() throws Exception {
 
         CsvLoader csvLoader = new CsvLoader();
@@ -200,33 +229,49 @@ public class LinearRegressionModel {
         build_W_Vector();
 
         // build the linear regression model
-        buildModel();
+        trainModel();
 
         //calculate L2 for training dataset
-        L2_training = calculateL2(trainingDataSet, false);
+        double L2_training = calculateL2ForTraining(trainingDataSet, false);
 
-        System.out.println("L2training for " + trainingDataSet.getInput().size() + "entries is " + L2_training);
+        System.out.println("L2training is " + L2_training);
 
         //calculate L2/N for training dataset
         double L2byN_training = L2_training / trainingDataSet.getInput().size();
 
-        System.out.println("L2/N training for " + trainingDataSet.getInput().size() + "entries is " + L2byN_training);
+        System.out.println("L2/N training is " + L2byN_training);
 
         // calculate cost function
-        determineCostFunction();
+        costFunction = L2byN_training + (LAMBDA * 5);
+
+        System.out.println("Cost function is " + costFunction);
 
         // tune the model
         tuneModel();
 
         //calculate L2 for tuning dataset
-        L2_tuned = calculateL2(trainingDataSet, true);
+        double L2_tuned = calculateL2ForTraining(trainingDataSet, true);
 
-        System.out.println("L2 tuned for " + trainingDataSet.getInput().size() + "entries is " + L2_tuned);
+        System.out.println("L2 tuned  is " + L2_tuned);
 
         //calculate L2/N for tuned dataset
         double L2byN_tuned = L2_tuned / trainingDataSet.getInput().size();
 
-        System.out.println("L2/N tuned for " + trainingDataSet.getInput().size() + "entries is " + L2byN_tuned);
+        System.out.println("L2/N tuned is " + L2byN_tuned);
+
+        // validate the linear regression model
+        validate();
+
+        //calculate L2 for testing dataset
+        double L2_validation = calculateL2ForValidation(testingDataSet);
+
+        System.out.println("L2 Testing is " + L2_validation);
+
+        //calculate validationScore
+        double validationScore = L2_validation/ testingDataSet.getInput().size();
+
+        System.out.println("Validation score is " + validationScore);
+
     }
 
 
