@@ -8,13 +8,15 @@ public class TrainingDataSet extends DataSet {
     public TrainingDataSet (List<List<Double>> input, List<Double> actualOutput) {
         super(input, actualOutput);
     }
-    private double delta;
 
-    public double getDelta() {
-        return delta;
+    private List<Double> tunedOutput;
+
+
+    public List<Double> getTunedOutput() {
+        return tunedOutput;
     }
 
-    public void setDelta(double delta) {
-        this.delta = delta;
+    public void setTunedOutput(List<Double> tunedOutput) {
+        this.tunedOutput = tunedOutput;
     }
 }

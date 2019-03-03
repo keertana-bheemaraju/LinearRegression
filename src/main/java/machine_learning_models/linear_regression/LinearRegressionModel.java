@@ -18,29 +18,57 @@ public class LinearRegressionModel {
     private TestingDataSet testingDataSet;
     private List<Double> w_vector = new ArrayList<>();
     private double L2_training;
-    private double L2_validation;
+    private double L2_tuned;
+
+    private final double LAMBDA = -1000000000;
+    private double costFunction;
 
     public LinearRegressionModel(String trainingData, String testingData) {
         this.trainingData = trainingData;
         this.testingData = testingData;
     }
 
-    public double calculateL2(DataSet dataSet) throws Exception {
+    public void determineCostFunction() {
+
+        costFunction = L2_training + (LAMBDA * 5);
+        System.out.println("Cost function is " + costFunction);
+    }
+
+    public void tuneModel() {
+
+        List<Double> calculatedOutput = trainingDataSet.getCalculatedOutput();
+        List<Double> tunedOutput = new ArrayList<>();
+        for (double val : calculatedOutput) {
+            double tunedVal = val + costFunction;
+            tunedOutput.add(tunedVal);
+        }
+
+        trainingDataSet.setTunedOutput(tunedOutput);
+    }
+
+
+    public double calculateL2(TrainingDataSet dataSet, boolean tuned) throws Exception {
 
         List<Double> actualOutput = dataSet.getActualOutput();
-        List<Double> calculatedOutput = dataSet.getCalculatedOutput();
+        List<Double> output;
 
-        if (actualOutput.size() != calculatedOutput.size()) {
+        if(tuned) {
+            output = dataSet.getTunedOutput();
+        } else {
+            output = dataSet.getCalculatedOutput();
+        }
+
+        if (actualOutput.size() != output.size()) {
             throw new Exception("actual and calculated outputs don't match");
         }
 
         double L2 = 0;
         for (int i = 0; i < actualOutput.size(); i++) {
-            double delta = calculatedOutput.get(i) - actualOutput.get(i);
+            double delta = output.get(i) - actualOutput.get(i);
             L2 += (delta * delta);
         }
 
-        return  L2;
+        return L2;
 
     }
 
@@ -102,6 +130,7 @@ public class LinearRegressionModel {
 
     }
 
+
     public void createTrainingDataSet(List<List<Double>> doubleMatrix) {
 
         List<List<Double>> input = new ArrayList<>();
@@ -155,7 +184,7 @@ public class LinearRegressionModel {
 
     }
 
-    public void process() throws Exception{
+    public void process() throws Exception {
 
         CsvLoader csvLoader = new CsvLoader();
         List<List<String>> stringMatrix = csvLoader.loadCsv(trainingData);
@@ -174,9 +203,30 @@ public class LinearRegressionModel {
         buildModel();
 
         //calculate L2 for training dataset
-        L2_training = calculateL2(trainingDataSet);
+        L2_training = calculateL2(trainingDataSet, false);
 
+        System.out.println("L2training for " + trainingDataSet.getInput().size() + "entries is " + L2_training);
 
+        //calculate L2/N for training dataset
+        double L2byN_training = L2_training / trainingDataSet.getInput().size();
+
+        System.out.println("L2/N training for " + trainingDataSet.getInput().size() + "entries is " + L2byN_training);
+
+        // calculate cost function
+        determineCostFunction();
+
+        // tune the model
+        tuneModel();
+
+        //calculate L2 for tuning dataset
+        L2_tuned = calculateL2(trainingDataSet, true);
+
+        System.out.println("L2 tuned for " + trainingDataSet.getInput().size() + "entries is " + L2_tuned);
+
+        //calculate L2/N for tuned dataset
+        double L2byN_tuned = L2_tuned / trainingDataSet.getInput().size();
+
+        System.out.println("L2/N tuned for " + trainingDataSet.getInput().size() + "entries is " + L2byN_tuned);
     }
 
 
